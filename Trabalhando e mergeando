@@ -1,0 +1,300 @@
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(magrittr)
+library(purrr)
+library(reshape2)
+library(tidyr)
+library(haven)
+library(readxl)
+library(read.dbc)
+
+cnes_estabelecimentos <- read_dta("C:/Users/guilh/Downloads/CNES_MG_Estabelecimentos.dta") %>%
+  select(co_cnes, no_fantasia)
+
+colnames(cnes_estabelecimentos) <- c("CNES", "nome_fantasia")
+
+
+cod_mun <- read_excel("cod_mun.xlsx")
+
+
+tipo_unidade <- read_excel("tipo_unidade.xlsx")
+
+######################## Trabalhando a base de habilitações
+
+
+habilitacoes<- read_dta("C:/Users/guilh/Downloads/habilitacoes (1).dta") %>%
+  filter(month == "12") 
+
+cod_habilitacao <- read_excel("cod_habilitacao.xlsx") %>%
+  select(Dígito, Descrição)
+
+colnames(cod_habilitacao) <- c("SGRUPHAB", "Descrição")
+
+habilitacoes <- merge(habilitacoes,cod_habilitacao, by="SGRUPHAB", all = T)
+
+missing_habilitacoes <- map_dbl(habilitacoes, function(x){
+  round(mean(is.na(x)),3)*100
+})
+
+habilitacoes_desejadas <- c(801:807, 901, 2410, 2413, 2422, 2608, 2609, 2701:2703)
+
+habilitacoes <- habilitacoes %>%
+  select(CNES, SGRUPHAB, DTPORTAR, PORTARIA, Descrição) %>%
+  filter(SGRUPHAB %in% habilitacoes_desejadas)
+
+############################# Trabalhando a base de leitos
+
+leitos <- read_dta("C:/Users/guilh/Downloads/leitos.dta") %>%
+  filter(month == "12") %>%
+  select(CNES, TP_LEITO, CODLEITO, QT_EXIST, QT_SUS, QT_NSUS)
+
+leitos$leito_tp_1 <- as.numeric(leitos$TP_LEITO == 1)
+
+leitos$leito_tp_2 <- as.numeric(leitos$TP_LEITO == 2)
+
+leitos$leito_tp_3 <- as.numeric(leitos$TP_LEITO == 3)
+
+leitos$leito_tp_4 <- as.numeric(leitos$TP_LEITO == 4)
+
+leitos$leito_tp_5 <- as.numeric(leitos$TP_LEITO == 5)
+
+leitos$leito_tp_6 <- as.numeric(leitos$TP_LEITO == 6)
+
+leitos$leito_tp_7 <- as.numeric(leitos$TP_LEITO == 7)
+
+leitos <- leitos %>%
+  mutate(qt_exist_leito_tp_1 = QT_EXIST*leito_tp_1, qt_exist_leito_tp_2 = QT_EXIST*leito_tp_2,
+         qt_exist_leito_tp_3 = QT_EXIST*leito_tp_3, qt_exist_leito_tp_4 = QT_EXIST*leito_tp_4,
+         qt_exist_leito_tp_5 = QT_EXIST*leito_tp_5, qt_exist_leito_tp_6 = QT_EXIST*leito_tp_6,
+         qt_exist_leito_tp_7 = QT_EXIST*leito_tp_7,
+         qt_exist_leito_tp_1_sus = QT_SUS*leito_tp_1, qt_exist_leito_tp_2_sus = QT_SUS*leito_tp_2,
+         qt_exist_leito_tp_3_sus = QT_SUS*leito_tp_3, qt_exist_leito_tp_4_sus = QT_SUS*leito_tp_4,
+         qt_exist_leito_tp_5_sus = QT_SUS*leito_tp_5, qt_exist_leito_tp_6_sus = QT_SUS*leito_tp_6,
+         qt_exist_leito_tp_7_sus = QT_SUS*leito_tp_7)
+
+leitos_final <- leitos %>%
+  group_by(CNES) %>%
+  summarise(qt_exist_leito_tp_1 = sum(qt_exist_leito_tp_1), qt_exist_leito_tp_2 = sum(qt_exist_leito_tp_2),
+            qt_exist_leito_tp_3 = sum(qt_exist_leito_tp_3), qt_exist_leito_tp_4 = sum(qt_exist_leito_tp_4),
+            qt_exist_leito_tp_5 = sum(qt_exist_leito_tp_5), qt_exist_leito_tp_6 = sum(qt_exist_leito_tp_6),
+            qt_exist_leito_tp_7 = sum(qt_exist_leito_tp_7),
+            qt_exist_leito_tp_1_sus = sum(qt_exist_leito_tp_1_sus), qt_exist_leito_tp_2_sus = sum(qt_exist_leito_tp_2_sus),
+            qt_exist_leito_tp_3_sus = sum(qt_exist_leito_tp_3_sus), qt_exist_leito_tp_4_sus = sum(qt_exist_leito_tp_4_sus),
+            qt_exist_leito_tp_5_sus = sum(qt_exist_leito_tp_5_sus), qt_exist_leito_tp_6_sus = sum(qt_exist_leito_tp_6_sus),
+            qt_exist_leito_tp_7_sus = sum(qt_exist_leito_tp_7_sus))
+
+
+
+########################### Trabalhando a base de equipamentos
+
+equipamentos <- read_dta("C:/Users/guilh/Downloads/equipamentos.dta") %>%
+  filter(month == "12") %>%
+  select(CNES, TIPEQUIP, CODEQUIP, QT_EXIST, QT_USO, IND_SUS, IND_NSUS)
+
+equipamentos$eq_tp_1 <- as.numeric(equipamentos$TIPEQUIP == 1)
+
+equipamentos$eq_tp_2 <- as.numeric(equipamentos$TIPEQUIP == 2)
+
+equipamentos$eq_tp_3 <- as.numeric(equipamentos$TIPEQUIP == 3)
+
+equipamentos$eq_tp_4 <- as.numeric(equipamentos$TIPEQUIP == 4)
+
+equipamentos$eq_tp_5 <- as.numeric(equipamentos$TIPEQUIP == 5)
+
+equipamentos$eq_tp_6 <- as.numeric(equipamentos$TIPEQUIP == 6)
+
+equipamentos$eq_tp_7 <- as.numeric(equipamentos$TIPEQUIP == 7)
+
+equipamentos$eq_tp_8 <- as.numeric(equipamentos$TIPEQUIP == 8)
+
+
+equipamentos <- equipamentos %>%
+  mutate(qt_exist_eq_tp_1 = QT_EXIST*eq_tp_1, qt_exist_eq_tp_2 = QT_EXIST*eq_tp_2,
+         qt_exist_eq_tp_3 = QT_EXIST*eq_tp_3, qt_exist_eq_tp_4 = QT_EXIST*eq_tp_4,
+         qt_exist_eq_tp_5 = QT_EXIST*eq_tp_5, qt_exist_eq_tp_6 = QT_EXIST*eq_tp_6,
+         qt_exist_eq_tp_7 = QT_EXIST*eq_tp_7, qt_exist_eq_tp_8 = QT_EXIST*eq_tp_8,
+         qt_exist_eq_tp_1_sus = QT_EXIST*eq_tp_1*IND_SUS,
+         qt_exist_eq_tp_2_sus = QT_EXIST*eq_tp_2*IND_SUS,
+         qt_exist_eq_tp_3_sus = QT_EXIST*eq_tp_3*IND_SUS,
+         qt_exist_eq_tp_4_sus = QT_EXIST*eq_tp_4*IND_SUS,
+         qt_exist_eq_tp_5_sus = QT_EXIST*eq_tp_5*IND_SUS,
+         qt_exist_eq_tp_6_sus = QT_EXIST*eq_tp_6*IND_SUS,
+         qt_exist_eq_tp_7_sus = QT_EXIST*eq_tp_7*IND_SUS,
+         qt_exist_eq_tp_8_sus = QT_EXIST*eq_tp_8*IND_SUS)
+
+
+equipamentos_final <- equipamentos %>%
+  group_by(CNES) %>%
+  summarise(qt_exist_eq_tp_1 = sum(qt_exist_eq_tp_1), qt_exist_eq_tp_2 = sum(qt_exist_eq_tp_2),
+            qt_exist_eq_tp_3 = sum(qt_exist_eq_tp_3), qt_exist_eq_tp_4 = sum(qt_exist_eq_tp_4),
+            qt_exist_eq_tp_5 = sum(qt_exist_eq_tp_5), qt_exist_eq_tp_6 = sum(qt_exist_eq_tp_6),
+            qt_exist_eq_tp_7 = sum(qt_exist_eq_tp_7), qt_exist_eq_tp_8 = sum(qt_exist_eq_tp_8),
+            qt_exist_eq_tp_1_sus = sum(qt_exist_eq_tp_1_sus), qt_exist_eq_tp_2_sus = sum(qt_exist_eq_tp_2_sus),
+            qt_exist_eq_tp_3_sus = sum(qt_exist_eq_tp_3_sus), qt_exist_eq_tp_4_sus = sum(qt_exist_eq_tp_4_sus),
+            qt_exist_eq_tp_5_sus = sum(qt_exist_eq_tp_5_sus), qt_exist_eq_tp_6_sus = sum(qt_exist_eq_tp_6_sus),
+            qt_exist_eq_tp_7_sus = sum(qt_exist_eq_tp_7_sus), qt_exist_eq_tp_8_sus = sum(qt_exist_eq_tp_8_sus))
+
+
+########################## Tratbalhando a base de estabelecimentos
+
+estabelecimentos <- read_dta("C:/Users/guilh/Downloads/estabelecimentos (1).dta") %>%
+  filter(month == "12")
+
+estabelecimentos <- merge(estabelecimentos, cnes_estabelecimentos, by = "CNES")
+
+estabelecimentos <- merge(estabelecimentos,cod_mun, by="CODUFMUN")
+
+missing_estabelecimentos <- map_dbl(estabelecimentos, function(x){
+  round(mean(is.na(x)),3)*100
+})
+
+estabelecimentos <- estabelecimentos %>%
+  select(CODUFMUN, CNES, COD_CEP, PF_PJ, NIV_DEP, REGSAUDE, MICR_REG,
+         DISTRSAN, DISTRADM, VINC_SUS, TPGESTAO, ATIVIDAD, CLIENTEL,
+         TP_UNID, TURNO_AT, TP_PREST, QTLEITP1, QTLEITP2, QTLEITP3,
+         NAT_JUR, nome_fantasia, Município)
+
+############################ Trabalhando a base de profissionais
+
+profissionais <- readRDS("prof_mg_dez_19.RDS") %>%
+  select(CNES, CBO, PROF_SUS, PROFNSUS, HORAOUTR, HORAHOSP, HORA_AMB,
+         TURNO_AT, VINCULAC, VINCUL_C, VINCUL_A, VINCUL_N) 
+
+profissionais$PROF_SUS <- as.numeric(profissionais$PROF_SUS)
+
+profissionais$PROFNSUS <- as.numeric(profissionais$PROFNSUS)
+
+profissionais <- profissionais %>%
+  mutate(prof_sus = PROF_SUS - 1, prof_nao_sus = PROFNSUS - 1) %>%
+  select(- PROF_SUS, - PROFNSUS)
+
+médicos <- c("2231A1", "2231A2", "2231F8", "2231F9", "2231G1", "225103",
+             "225105", "225106", "225109", "225110", "225112", "225115",
+             "225118", "225120", "225121", "225122", "225124", "225125",
+             "225127", "225130", "225133", "225135", "225136", "225139",
+             "225140", "225142", "225145", "225148", "225150", "225151",
+             "225155", "225160", "225165", "225170", "225175", "225180",
+             "225185", "225190", "225195", "225203", "225210", "225215",
+             "225220", "225225", "225230", "225235", "225240", "225250",
+             "225255", "225260", "225265", "225270", "225275", "225280",
+             "225285", "225290", "225305", "225310", "225315", "225320",
+             "225325", "225330", "225350", "225121", "225295", "225345",
+             "225335", "223119", "223150")
+
+enfermeiros <- c("223565", "2235C3", "223505", "223510", "223515", "223520",
+                 "223525", "223530", "223535", "223540", "223545", "223550",
+                 "223555", "223560")
+
+aux_tecni_enfermagem <- c("322250", "322205", "322210", "322215", "322220",
+                          "322230", "322235", "3222b3", "3222e1", "3222e2")
+
+alta_admin <- as.numeric(profissionais$CBO) > 121005 & 
+  as.numeric(profissionais$CBO) < 142705 
+
+profissionais$medicos <- as.numeric(profissionais$CBO %in% médicos)
+profissionais$enfermeiros <- as.numeric(profissionais$CBO %in% enfermeiros)
+profissionais$aux_tecni_enfermagem <- as.numeric(profissionais$CBO %in% aux_tecni_enfermagem)
+profissionais$alta_admin <- as.numeric(alta_admin)
+
+
+profissionais$medicos_sus <- as.numeric(profissionais$CBO %in% médicos & 
+                                          profissionais$prof_sus == 1)
+
+profissionais$enfermeiros_sus <- as.numeric(profissionais$CBO %in% enfermeiros &
+                                              profissionais$prof_sus == 1)
+
+profissionais$aux_tecni_enfermagem_sus <- as.numeric(profissionais$CBO %in% aux_tecni_enfermagem &
+                                                       profissionais$prof_sus == 1)
+
+
+profissionais <- profissionais %>%
+  mutate(horaoutr_medico = HORAOUTR*medicos, horahosp_medico = HORAHOSP*medicos,
+         hora_amb_medico = HORA_AMB*medicos, horaoutr_enf = HORAOUTR*enfermeiros,
+         horahosp_enf = HORAHOSP*enfermeiros, hora_amb_enf = HORA_AMB*enfermeiros,
+         horaoutr_a_t_enf = HORAOUTR*aux_tecni_enfermagem, horahosp_a_t_enf =HORAHOSP*aux_tecni_enfermagem,
+         hora_amb_a_t_enf = HORA_AMB*aux_tecni_enfermagem, horaoutr_medico_sus = HORAOUTR*medicos_sus,
+         horahosp_medico_sus = HORAHOSP*medicos_sus, hora_amb_medico_sus = HORA_AMB*medicos_sus,
+         horaoutr_enf_sus = HORAOUTR*enfermeiros_sus, horahosp_enf_sus = HORAHOSP*enfermeiros_sus,
+         hora_amb_enf_sus = HORA_AMB*enfermeiros_sus, horaoutr_a_t_enf_sus = HORAOUTR*aux_tecni_enfermagem_sus,
+         horahosp_a_t_enf_sus = HORAHOSP*aux_tecni_enfermagem_sus, hora_amb_a_t_enf_sus = HORA_AMB*aux_tecni_enfermagem_sus,
+         hora_total_medico = horaoutr_medico + horahosp_medico + hora_amb_medico,
+         hora_total_enf = horaoutr_enf + horahosp_enf + hora_amb_enf,
+         hora_total_a_t_enf = horaoutr_a_t_enf + horahosp_a_t_enf + hora_amb_a_t_enf,
+         hora_total_medico_sus = horaoutr_medico_sus + horahosp_medico_sus + hora_amb_medico_sus,
+         hora_total_enf_sus = horaoutr_enf_sus + horahosp_enf_sus + hora_amb_enf_sus,
+         hora_total_a_t_enf_sus = horaoutr_a_t_enf_sus + horahosp_a_t_enf_sus + hora_amb_a_t_enf_sus,
+         medico_pad = hora_total_medico/12, medico_pad_sus = hora_total_medico_sus/12,
+         enf_pad = hora_total_enf/36, enf_pad_sus = hora_total_enf_sus/36,
+         a_t_enf_pad = hora_total_a_t_enf/40, a_t_enf_pad_sus = hora_total_a_t_enf_sus/40)
+
+
+
+profissionais_final <- profissionais %>%
+  group_by(CNES) %>%
+  summarise(prof_sus = sum(prof_sus), prof_nao_sus = sum(prof_nao_sus), 
+            prof_total = sum(prof_sus)+sum(prof_nao_sus), medicos = sum(medicos),
+            enfermeiros = sum(enfermeiros), aux_tecni_enfermagem = sum(aux_tecni_enfermagem),
+            alta_admin = sum(alta_admin), medicos_sus = sum(medicos_sus), 
+            enfermeiros_sus = sum(enfermeiros_sus), aux_tecni_enfermagem_sus = sum(aux_tecni_enfermagem_sus),
+            horaoutr_medico = sum(horaoutr_medico), horahosp_medico = sum(horahosp_medico),
+            hora_amb_medico = sum(hora_amb_medico), hora_total_medico = sum(hora_total_medico),
+            horaoutr_enf = sum(horaoutr_enf), horahosp_enf = sum(horahosp_enf),
+            hora_amb_enf = sum(hora_amb_enf), hora_total_enf = sum(hora_total_enf),
+            horaoutr_a_t_enf = sum( horaoutr_a_t_enf), horahosp_a_t_enf = sum(horahosp_a_t_enf),
+            hora_amb_a_t_enf = sum(hora_amb_a_t_enf), hora_total_a_t_enf = sum(hora_total_a_t_enf),
+            horaoutr_medico_sus = sum(horaoutr_medico_sus), horahosp_medico_sus = sum(horahosp_medico_sus),
+            hora_amb_medico_sus = sum(hora_amb_medico_sus), hora_total_medico_sus = sum(hora_total_medico_sus),
+            horaoutr_enf_sus = sum(horaoutr_enf_sus), horahosp_enf_sus = sum(horahosp_enf_sus),
+            hora_amb_enf_sus = sum(hora_amb_enf_sus), hora_total_enf_sus = sum(hora_total_enf_sus),
+            horaoutr_a_t_enf_sus = sum(horaoutr_a_t_enf_sus), horahosp_a_t_enf_sus = sum(horahosp_a_t_enf_sus),
+            hora_amb_a_t_enf_sus = sum(hora_amb_a_t_enf_sus), hora_total_a_t_enf_sus = sum(hora_total_a_t_enf_sus),
+            medico_pad = sum(medico_pad), medico_pad_sus = sum(medico_pad_sus),
+            enf_pad = sum(enf_pad), enf_pad_sus = sum(enf_pad_sus),
+            a_t_enf_pad = sum(a_t_enf_pad), a_t_enf_pad_sus = sum(a_t_enf_pad_sus)) 
+
+
+
+###################### Trabalhando a base de procedimentos (aih)
+
+aih <- read_dta("C:/Users/guilh/Downloads/aih_iam_avc_MG_17-19.dta") %>%
+  filter(year == "2019")
+
+missing_aih <- map_dbl(aih, function(x){
+  round(mean(is.na(x)),3)*100
+})
+
+aih$NUM_PROC <- NULL
+aih$CPF_AUT <- NULL
+aih$GESTOR_DT <- NULL
+aih$INFEHOSP <- NULL
+aih$DIAGSEC8 <- NULL
+aih$DIAGSEC9 <- NULL
+aih$UTI_MES_IN <- NULL
+aih$UTI_MES_AN <- NULL
+aih$UTI_MES_AL <- NULL
+aih$UTI_INT_IN <- NULL
+aih$UTI_INT_AN <- NULL
+aih$UTI_INT_AL <- NULL
+aih$VAL_SADT <- NULL
+aih$VAL_RN <- NULL
+aih$VAL_ACOMP <- NULL
+aih$VAL_ORTP <- NULL
+aih$VAL_SANGUE <- NULL
+aih$VAL_SADTSR <- NULL
+aih$VAL_TRANSP <- NULL
+aih$VAL_OBSANG <- NULL
+aih$VAL_PED1AC <- NULL
+aih$RUBRICA <- NULL
+aih$TOT_PT_SP <- NULL
+aih$NUM_FILHOS <- NULL
+aih$INSTRU <- NULL
+aih$CID_NOTIF <- NULL
+aih$SEQ_AIH5 <- NULL
+aih$INSC_PN <- NULL
+aih$GESTRISCO <- NULL
+aih$CONTRACEP1 <- NULL
+aih$CONTRACEP2 <- NULL
+aih$CID_MORTE <- NULL
+aih$CID_ASSO <- NULL
+aih$VAL_SP_GES <- NULL
